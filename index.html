@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Ciutat amb Avingudes i Festa Aleatòria 🎉</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; user-select: none; -webkit-user-select: none; }
+html, body { width: 100%; height: 100%; overflow: hidden; background: #0b2211; touch-action: none; position: fixed; }
+canvas { display: block; width: 100%; height: 100%; }
+
+/* UI Principal Adaptable */
+#ui {
+  position: fixed; top: 10px; left: 10px;
+  color: #fff; font-family: system-ui, sans-serif;
+  font-size: 14px; font-weight: 600;
+  background: rgba(0,0,0,0.8); padding: 10px 14px;
+  border-radius: 10px; pointer-events: none;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+  display: flex; flex-direction: column; gap: 5px;
+  z-index: 10;
+}
+#energy-container { display: flex; align-items: center; gap: 6px; }
+#energy-bar-bg {
+  width: 90px; height: 10px; background: #333;
+  border-radius: 5px; overflow: hidden; border: 1px solid #555;
+}
+#energy-bar { width: 100%; height: 100%; background: #2ecc71; transition: width 0.1s; }
+
+#speedometer {
+  position: fixed; top: 10px; right: 10px;
+  color: #fff; font-family: system-ui, monospace;
+  font-size: 12px; font-weight: 600;
+  background: rgba(0,0,0,0.8); padding: 8px 14px;
+  border-radius: 10px; pointer-events: none;
+  z-index: 10;
+}
+#controls-info {
+  position: fixed; bottom: 14px; left: 50%;
+  transform: translateX(-50%);
+  color: rgba(255,255,255,0.8); font-family: system-ui, sans-serif;
+  font-size: 12px; text-align: center;
+  background: rgba(0,0,0,0.6); padding: 8px 22px;
+  border-radius: 20px; pointer-events: none;
+  white-space: nowrap;
+  z-index: 5;
+}
+#coinpop {
+  position: fixed; top: 35%; left: 50%;
+  transform: translate(-50%, -50%);
+  color: #FFD700; font-family: system-ui, sans-serif;
+  font-size: 32px; font-weight: 800;
+  text-shadow: 0 0 20px rgba(255,215,0,0.9);
+  opacity: 0; transition: opacity 0.2s; pointer-events: none;
+  z-index: 10;
+}
+
+/* MINIMAPA RESPONSIVE */
+#minimap {
+  position: fixed; top: 55px; right: 10px;
+  background: #000000;
+  border-radius: 12px; border: 3px solid #FFD700;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.8);
+  z-index: 10;
+  width: 190px; height: 190px;
+}
+
+/* Botiga Flotant Adaptable */
+#shop-ui {
+  position: fixed; top: 130px; left: 10px;
+  background: rgba(0,0,0,0.85); border: 2px solid #FFD700;
+  border-radius: 10px; padding: 10px; color: white;
+  font-family: system-ui, sans-serif; width: 160px;
+  display: flex; flex-direction: column; gap: 6px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.6);
+  z-index: 10;
+}
+#shop-ui h3 { color: #FFD700; font-size: 12px; text-align: center; font-weight: 700; }
+.shop-item {
+  display: flex; flex-direction: column; gap: 3px;
+  border-top: 1px solid rgba(255,255,255,0.15); padding-top: 4px;
+}
+.shop-item p { font-size: 9px; color: #bbb; text-align: center; }
+.shop-btn {
+  color: white; border: none; padding: 5px;
+  font-size: 10px; font-weight: bold; border-radius: 5px; cursor: pointer;
+  width: 100%; transition: background 0.2s;
+}
+.shop-btn.food { background: #27ae60; }
+.shop-btn.life { background: #2980b9; }
+.shop-btn:disabled { background: #555 !important; color: #888; cursor: not-allowed; }
+
+/* CONTROLS TÀCTILS ERGONÒMICS (Estil Comandament Consola) */
+#mobile-controls {
+  display: none;
+  position: fixed; bottom: 0; left: 0; width: 100%; height: 160px;
+  pointer-events: none; z-index: 30;
+}
+.touch-btn {
+  position: absolute; background: rgba(255, 255, 255, 0.22);
+  border: 2px solid rgba(255, 255, 255, 0.5); border-radius: 50%;
+  width: 65px; height: 65px; display: flex; align-items: center;
+  justify-content: center; color: white; font-size: 24px; font-weight: bold;
+  pointer-events: auto; touch-action: none;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+}
+.touch-btn:active { background: rgba(255, 255, 255, 0.45); transform: scale(0.92); }
+
+/* Esquerra: Direcció */
+#btn-left { bottom: 45px; left: 20px; }
+#btn-right { bottom: 45px; left: 105px; }
+
+/* Dreta: Accions i Velocitat */
+#btn-up { bottom: 85px; right: 30px; }
+#btn-down { bottom: 15px; right: 30px; }
+#btn-space { 
+  bottom: 50px; right: 115px; 
+  width: 60px; height: 60px; 
+  font-size: 11px; font-weight: 800;
+  background: rgba(231, 76, 60, 0.3);
+  border-color: rgba(231, 76, 60, 0.6);
+}
+
+/* ADAPTACIÓ PER A MÒBILS (PANTALLES PETITES) */
+@media (max-width: 767px) {
+  #mobile-controls { display: block; }
+  #controls-info { display: none; }
+  #minimap { width: 130px; height: 130px; top: 50px; }
+  #shop-ui { width: 135px; top: 120px; padding: 6px; }
+  #shop-ui h3 { font-size: 11px; }
+  .shop-btn { padding: 4px; font-size: 9px; }
+  #ui { font-size: 12px; padding: 8px; }
+}
+</style>
+</head>
+<body>
+
+<canvas id="gameCanvas"></canvas>
+
+<div id="ui">
+  <div>🪙 Monedes: <span id="score">0</span> / 3 per la Festa</div>
+  <div>❤️ Vides: <span id="lives">3</span></div>
+  <div id="energy-container">
+    <span>⚡ Energia:</span>
+    <div id="energy-bar-bg"><div id="energy-bar"></div></div>
+  </div>
+  <div id="objective-status" style="color: #ff00ff; font-size: 11px; margin-top: 1px;">Busca la festa 🎉 | Falten 3 🪙</div>
+</div>
+
+<div id="speedometer">Velocitat: <span id="spd">0</span> km/h</div>
+<div id="coinpop">+1 🪙</div>
+
+<canvas id="minimap" width="190" height="190"></canvas>
+
+<div id="controls-info">⬆ W / ⬇ S Avançar-Frenar &nbsp;|&nbsp; ⬅ A / ➡ D Girar &nbsp;|&nbsp; ESPAI Fre de mà &nbsp;|&nbsp; 🛒 <b>B (Pizza) | V (Vida)</b></div>
+
+<div id="shop-ui">
+  <h3>🛒 Botiga de la Ciutat</h3>
+  <div class="shop-item">
+    <p>Preu: 2 🪙 (+35% ⚡)</p>
+    <button id="buy-button" class="shop-btn food" onclick="buyFood()">Comprar Pizza 🍕</button>
+  </div>
+  <div class="shop-item">
+    <p>Preu: 3 🪙 (+1 ❤️)</p>
+    <button id="buy-life-button" class="shop-btn life" onclick="buyLife()">Comprar Vida ❤️</button>
+  </div>
+</div>
+
+<div id="mobile-controls">
+  <div id="btn-left" class="touch-btn">◀</div>
+  <div id="btn-right" class="touch-btn">▶</div>
+  <div id="btn-up" class="touch-btn">▲</div>
+  <div id="btn-down" class="touch-btn">▼</div>
+  <div id="btn-space" class="touch-btn">FRE</div>
+</div>
+
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const minimap = document.getElementById('minimap');
+const mctx = minimap.getContext('2d');
+const scoreEl = document.getElementById('score');
+const spdEl = document.getElementById('spd');
+const coinpop = document.getElementById('coinpop');
+
+const livesEl = document.getElementById('lives');
+const energyBar = document.getElementById('energy-bar');
+const buyButton = document.getElementById('buy-button');
+const buyLifeButton = document.getElementById('buy-life-button');
+const objStatusEl = document.getElementById('objective-status');
+
+function resize() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  
+  // Reajustem dinàmicament la mida lògica del canvas del minimapa segons el CSS responsive
+  const rect = minimap.getBoundingClientRect();
+  minimap.width = rect.width;
+  minimap.height = rect.height;
+}
+window.addEventListener('resize', resize);
+window.addEventListener('orientationchange', () => { setTimeout(resize, 200); });
+resize();
+
+// ── SISTEMA DE MÚSICA PROCEDIMENTAL ──
+let audioCtx = null;
+let musicInterval = null;
+let musicStarted = false;
+
+function initMusic() {
+  if (musicStarted) return;
+  musicStarted = true;
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  const notes = [130.81, 146.83, 164.81, 196.00, 164.81, 196.00, 220.00, 261.63]; 
+  let step = 0;
+
+  musicInterval = setInterval(() => {
+    if (gameOver || gameWon || !audioCtx) return;
+    playTone(notes[step % 4] / 2, 'sawtooth', 0.04, 0.25);
+    if (step % 2 === 0 && Math.random() > 0.3) {
+      const randomNote = notes[Math.floor(Math.random() * notes.length)];
+      playTone(randomNote, 'triangle', 0.06, 0.2);
+    }
+    if (step % 4 === 2) { playTone(80, 'sine', 0.05, 0.05); }
+    step++;
+  }, 250);
+}
+
+function playTone(freq, type, volume, duration) {
+  try {
+    if (!audioCtx || audioCtx.state === 'suspended') return;
+    const osc = audioCtx.createOscillator();
+    const gainNode = audioCtx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+    gainNode.gain.setValueAtTime(volume, audioCtx.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + duration);
+    osc.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
+    osc.start();
+    osc.stop(audioCtx.currentTime + duration);
+  } catch (e) {}
+}
+
+function stopMusic() {
+  if (musicInterval) { clearInterval(musicInterval); musicInterval = null; }
+  if (audioCtx) { audioCtx.close(); audioCtx = null; }
+}
+
+function tryStartAudio() {
+  if (!musicStarted) { initMusic(); } 
+  else if (audioCtx && audioCtx.state === 'suspended') { audioCtx.resume(); }
+}
+
+// ── CONFIGURACIÓ DEL MAPA ──
+const MAP_SIZE = 1800; 
+const OFF_X = -MAP_SIZE / 2;
+const OFF_Y = -MAP_SIZE / 2;
+
+const streets = [];
+const buildings = [];
+const solidBlocks = []; 
+const coins = [];
+const trees = [];
+const pedestrians = [];
+let partyZone = null; 
+
+let score = 0;
+let popTimer = 0;
+let lives = 3;
+let energy = 100;
+let gameOver = false;
+let gameWon = false; 
+let partyMessageTimer = 0;
+
+const MARGE_FINAL_POBLE = 90;
+const INNER_MAP_X1 = OFF_X + MARGE_FINAL_POBLE;
+const INNER_MAP_Y1 = OFF_Y + MARGE_FINAL_POBLE;
+const INNER_MAP_X2 = OFF_X + MAP_SIZE - MARGE_FINAL_POBLE;
+const INNER_MAP_Y2 = OFF_Y + MAP_SIZE - MARGE_FINAL_POBLE;
+
+function buildIrregularCity() {
+  const xLines = [INNER_MAP_X1];
+  let currentX = INNER_MAP_X1 + 160 + Math.random() * 80;
+  while (currentX < INNER_MAP_X2 - 120) { xLines.push(currentX); currentX += 180 + Math.random() * 180; }
+  xLines.push(INNER_MAP_X2);
+
+  const yLines = [INNER_MAP_Y1];
+  let currentY = INNER_MAP_Y1 + 160 + Math.random() * 80;
+  while (currentY < INNER_MAP_Y2 - 120) { yLines.push(currentY); currentY += 180 + Math.random() * 180; }
+  yLines.push(INNER_MAP_Y2);
+
+  const xWidths = xLines.map((val, idx) => (idx === 2 || idx === 4) ? 95 : 46); 
+  const yWidths = yLines.map((val, idx) => (idx === 2 || idx === 4) ? 95 : 46);
+
+  for (let i = 1; i < xLines.length - 1; i++) streets.push({ x: xLines[i], isHoriz: false, width: xWidths[i] });
+  for (let j = 1; j < yLines.length - 1; j++) streets.push({ y: yLines[j], isHoriz: true, width: yWidths[j] });
+
+  const bldPalette = ['#34495e', '#2c3e50', '#7f8c8d', '#d35400', '#c0392b', '#27ae60', '#2980b9', '#8e44ad', '#e67e22'];
+
+  for (let i = 0; i < xLines.length - 1; i++) {
+    for (let j = 0; j < yLines.length - 1; j++) {
+      const x1 = xLines[i] + (i === 0 ? 0 : xWidths[i] / 2);
+      const x2 = xLines[i+1] - (i+1 === xLines.length - 1 ? 0 : xWidths[i+1] / 2);
+      const y1 = yLines[j] + (j === 0 ? 0 : yWidths[j] / 2);
+      const y2 = yLines[j+1] - (j+1 === yLines.length - 1 ? 0 : yWidths[j+1] / 2);
+      const blockW = x2 - x1; const blockH = y2 - y1;
+      if (blockW < 60 || blockH < 60) continue;
+
+      if (Math.random() < 0.16) {
+        buildings.push({ type: 'park', x: x1, y: y1, w: blockW, h: blockH });
+        const treeCount = Math.floor((blockW * blockH) / 3200) + 1;
+        for (let t = 0; t < treeCount; t++) trees.push({ x: x1 + 8 + Math.random() * (blockW - 16), y: y1 + 8 + Math.random() * (blockH - 16), r: 7 + Math.random() * 6 });
+      } else {
+        solidBlocks.push({ x: x1, y: y1, w: blockW, h: blockH });
+        const divideVertical = blockW > blockH; const divCount = Math.floor(Math.random() * 3) + 1;
+        if (divideVertical) {
+          const subW = blockW / divCount;
+          for (let d = 0; d < divCount; d++) {
+            const h = 45 + Math.random() * 85; const bX = x1 + d * subW + 2; const bW = subW - 4;
+            const windowGrid = Array.from({ length: Math.ceil(h / 12) }, () => Array.from({ length: Math.ceil(bW / 10) }, () => Math.random() > 0.3));
+            buildings.push({ type: 'building', x: bX, y: y1 + blockH - h, w: bW, h: h, color: bldPalette[Math.floor(Math.random() * bldPalette.length)], windowGrid });
+          }
+        } else {
+          const subH = blockH / divCount;
+          for (let d = 0; d < divCount; d++) {
+            const h = 45 + Math.random() * 85; const bY = y1 + d * subH + 2; const bH = subH - 4;
+            const windowGrid = Array.from({ length: Math.ceil(bH / 12) }, () => Array.from({ length: Math.ceil((blockW - 4) / 10) }, () => Math.random() > 0.3));
+            buildings.push({ type: 'building', x: x1 + 2, y: bY, w: blockW - 4, h: bH, color: bldPalette[Math.floor(Math.random() * bldPalette.length)], windowGrid });
+          }
+        }
+      }
+      if (Math.random() < 0.7 && i > 0) coins.push({ x: xLines[i], y: y1 + Math.random() * blockH, r: 8, collected: false, phase: Math.random() * 5 });
+      if (Math.random() < 0.7 && j > 0) coins.push({ x: x1 + Math.random() * blockW, y: yLines[j], r: 8, collected: false, phase: Math.random() * 5 });
+    }
+  }
+  for (let c = 0; c < 12; c++) { coins.push({ x: xLines[2] + (Math.random() * 260 - 130), y: yLines[2] + (Math.random() * 260 - 130), r: 8, collected: false, phase: Math.random() * 5 }); }
+  partyZone = { x: xLines[Math.floor(1 + Math.random() * (xLines.length - 2))], y: yLines[Math.floor(1 + Math.random() * (yLines.length - 2))], r: 35 }; 
+
+  for (let p = 0; p < 10; p++) {
+    const isHoriz = Math.random() > 0.5;
+    if (isHoriz && yLines.length > 2) {
+      const targetY = yLines[Math.floor(1 + Math.random() * (yLines.length - 2))];
+      pedestrians.push({ x: INNER_MAP_X1 + Math.random() * (INNER_MAP_X2 - INNER_MAP_X1), y: targetY + (Math.random() * 16 - 8), speedX: (0.7 + Math.random() * 0.8) * (Math.random() > 0.5 ? 1 : -1), speedY: 0, r: 6, isHoriz: true });
+    } else if (xLines.length > 2) {
+      const targetX = xLines[Math.floor(1 + Math.random() * (xLines.length - 2))];
+      pedestrians.push({ x: targetX + (Math.random() * 16 - 8), y: INNER_MAP_Y1 + Math.random() * (INNER_MAP_Y2 - INNER_MAP_Y1), speedX: 0, speedY: (0.7 + Math.random() * 0.8) * (Math.random() > 0.5 ? 1 : -1), r: 6, isHoriz: false });
+    }
+  }
+}
+buildIrregularCity();
+
+function circleHitsBlock(px, py, r, b) {
+  const nearX = Math.max(b.x, Math.min(px, b.x + b.w)); const nearY = Math.max(b.y, Math.min(py, b.y + b.h));
+  return (px - nearX)**2 + (py - nearY)**2 < r * r;
+}
+function resolveCircleBlock(px, py, r, b) {
+  const nearX = Math.max(b.x, Math.min(px, b.x + b.w)); const nearY = Math.max(b.y, Math.min(py, b.y + b.h));
+  const dx = px - nearX; const dy = py - nearY; const dist = Math.sqrt(dx * dx + dy * dy);
+  if (dist === 0) return { nx: 1, ny: 0, depth: r };
+  return { nx: dx / dist, ny: dy / dist, depth: r - dist };
+}
+
+// ── FÍSICA I CONTROLS COMPLETS ──
+const car = {
+  x: INNER_MAP_X1 + 120, y: INNER_MAP_Y1 + 120, angle: 0, speed: 0, maxSpeed: 5.4, acc: 0.16,
+  friction: 0.94, brakeFriction: 0.82, turnSpeed: 0.095, w: 20, h: 38, radius: 15, trail: []
+};
+const keys = { w: false, s: false, a: false, d: false, space: false };
+
+window.addEventListener('keydown', e => {
+  tryStartAudio(); let k = e.key.toLowerCase();
+  if (k === 'w' || e.key === 'ArrowUp') keys.w = true;
+  if (k === 's' || e.key === 'ArrowDown') keys.s = true;
+  if (k === 'a' || e.key === 'ArrowLeft') keys.a = true;
+  if (k === 'd' || e.key === 'ArrowRight') keys.d = true;
+  if (e.key === ' ') keys.space = true;
+  if (k === 'b' && !gameOver && !gameWon) buyFood();
+  if (k === 'v' && !gameOver && !gameWon) buyLife();
+  if ([' ','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)) e.preventDefault();
+});
+window.addEventListener('keyup', e => { 
+  let k = e.key.toLowerCase();
+  if (k === 'w' || e.key === 'ArrowUp') keys.w = false;
+  if (k === 's' || e.key === 'ArrowDown') keys.s = false;
+  if (k === 'a' || e.key === 'ArrowLeft') keys.a = false;
+  if (k === 'd' || e.key === 'ArrowRight') keys.d = false;
+  if (e.key === ' ') keys.space = false;
+});
+
+// Suport mòbil total sense retards (Touch Events actius)
+function setupTouch(id, stateProp) {
+  const btn = document.getElementById(id); if (!btn) return;
+  const start = (e) => { e.preventDefault(); tryStartAudio(); keys[stateProp] = true; };
+  const end = (e) => { e.preventDefault(); keys[stateProp] = false; };
+  btn.addEventListener('touchstart', start, {passive: false});
+  btn.addEventListener('touchend', end, {passive: false});
+  btn.addEventListener('touchcancel', end, {passive: false});
+}
+setupTouch('btn-up', 'w'); setupTouch('btn-down', 's');
+setupTouch('btn-left', 'a'); setupTouch('btn-right', 'd'); setupTouch('btn-space', 'space');
+
+function buyFood() {
+  if (score >= 2 && energy < 100 && !gameOver && !gameWon) { 
+    score -= 2; energy = Math.min(energy + 35, 100);
+    scoreEl.textContent = score + " / 3 per la Festa"; energyBar.style.width = energy + '%'; checkObjectiveStatus();
+  }
+}
+function buyLife() {
+  if (score >= 3 && !gameOver && !gameWon) { 
+    score -= 3; lives++; scoreEl.textContent = score + " / 3 per la Festa"; livesEl.textContent = lives; checkObjectiveStatus();
+  }
+}
+function checkObjectiveStatus() {
+  if (score >= 3) { objStatusEl.innerHTML = "¡Tens les 3 monedes! 🪙 Ves a la Festa 🎉"; objStatusEl.style.color = "#00ff00"; }
+  else { objStatusEl.innerHTML = `Busca la festa 🎉 | Falten ${3 - score} 🪙`; objStatusEl.style.color = "#ff00ff"; }
+}
+
+function drawRoads(ox, oy) {
+  ctx.fillStyle = '#14331a'; ctx.fillRect(OFF_X + ox, OFF_Y + oy, MAP_SIZE, MAP_SIZE);
+  ctx.fillStyle = '#181818'; ctx.fillRect(INNER_MAP_X1 + ox, INNER_MAP_Y1 + oy, INNER_MAP_X2 - INNER_MAP_X1, INNER_MAP_Y2 - INNER_MAP_Y1);
+  ctx.fillStyle = '#2c2c2c';
+  for (const s of streets) {
+    if (s.isHoriz) ctx.fillRect(INNER_MAP_X1 + ox, s.y - s.width / 2 + oy, INNER_MAP_X2 - INNER_MAP_X1, s.width);
+    else ctx.fillRect(s.x - s.width / 2 + ox, INNER_MAP_Y1 + oy, s.width, INNER_MAP_Y2 - INNER_MAP_Y1);
+  }
+  ctx.save();
+  for (const s of streets) {
+    if (s.isHoriz) {
+      if (s.width > 60) {
+        ctx.strokeStyle = '#f1c40f'; ctx.lineWidth = 1.5; ctx.beginPath();
+        ctx.moveTo(INNER_MAP_X1 + ox, s.y - 3 + oy); ctx.lineTo(INNER_MAP_X2 + ox, s.y - 3 + oy);
+        ctx.moveTo(INNER_MAP_X1 + ox, s.y + 3 + oy); ctx.lineTo(INNER_MAP_X2 + ox, s.y + 3 + oy); ctx.stroke();
+      } else {
+        ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.2; ctx.setLineDash([12, 12]); ctx.beginPath(); ctx.moveTo(INNER_MAP_X1 + ox, s.y + oy); ctx.lineTo(INNER_MAP_X2 + ox, s.y + oy); ctx.stroke(); ctx.setLineDash([]);
+      }
+    } else {
+      if (s.width > 60) {
+        ctx.strokeStyle = '#f1c40f'; ctx.lineWidth = 1.5; ctx.beginPath();
+        ctx.moveTo(s.x - 3 + ox, INNER_MAP_Y1 + oy); ctx.lineTo(s.x - 3 + ox, INNER_MAP_Y2 + oy);
+        ctx.moveTo(s.x + 3 + ox, INNER_MAP_Y1 + oy); ctx.lineTo(s.x + 3 + ox, INNER_MAP_Y2 + oy); ctx.stroke();
+      } else {
+        ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.2; ctx.setLineDash([12, 12]); ctx.beginPath(); ctx.moveTo(s.x + ox, INNER_MAP_Y1 + oy); ctx.lineTo(s.x + ox, INNER_MAP_Y2 + oy); ctx.stroke(); ctx.setLineDash([]);
+      }
+    }
+  }
+  ctx.restore();
+  ctx.strokeStyle = '#27ae60'; ctx.lineWidth = 8; ctx.strokeRect(INNER_MAP_X1 + ox, INNER_MAP_Y1 + oy, INNER_MAP_X2 - INNER_MAP_X1, INNER_MAP_Y2 - INNER_MAP_Y1);
+}
+
+function drawPartyZone(ox, oy, t) {
+  if (!partyZone) return; const px = partyZone.x + ox; const py = partyZone.y + oy;
+  ctx.save(); const pulseR = partyZone.r + Math.sin(t * 0.006) * 6;
+  ctx.fillStyle = 'rgba(46, 204, 113, 0.3)'; ctx.beginPath(); ctx.arc(px, py, pulseR, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#2ecc71'; ctx.beginPath(); ctx.arc(px, py, partyZone.r * 0.65, 0, Math.PI * 2); ctx.fill();
+  ctx.lineWidth = 3; ctx.strokeStyle = '#ffffff'; ctx.stroke();
+  ctx.font = '22px system-ui'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('🎉', px, py); ctx.restore();
+}
+
+function drawBuildings(ox, oy) {
+  for (const b of buildings) {
+    if (b.type === 'park') {
+      ctx.fillStyle = '#27ae60'; ctx.fillRect(b.x + ox, b.y + oy, b.w, b.h);
+      ctx.fillStyle = '#2ecc71'; ctx.fillRect(b.x + ox + 3, b.y + oy + 3, b.w - 6, b.h - 6);
+    } else {
+      ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(b.x + ox + 4, b.y + oy + 4, b.w, b.h);
+      ctx.fillStyle = b.color; ctx.fillRect(b.x + ox, b.y + oy, b.w, b.h);
+      ctx.fillStyle = 'rgba(0,0,0,0.15)'; ctx.fillRect(b.x + ox, b.y + oy + b.h / 2, b.w, b.h / 2);
+      if (b.windowGrid) {
+        b.windowGrid.forEach((row, ri) => {
+          row.forEach((lit, ci) => {
+            if (!lit) return; const wX = b.x + ox + 5 + ci * 10; const wY = b.y + oy + 6 + ri * 12;
+            if (wX + 6 > b.x + ox + b.w - 2 || wY + 7 > b.y + oy + b.h - 2) return;
+            ctx.fillStyle = '#f39c12'; ctx.fillRect(wX, wY, 5, 7);
+          });
+        });
+      }
+    }
+  }
+  for (const t of trees) {
+    ctx.fillStyle = '#1e824c'; ctx.beginPath(); ctx.arc(t.x + ox, t.y + oy, t.r + 1, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#26a65b'; ctx.beginPath(); ctx.arc(t.x + ox - 1, t.y + oy - 1, t.r * 0.7, 0, Math.PI * 2); ctx.fill();
+  }
+}
+
+function drawCoins(ox, oy, t) {
+  for (const coin of coins) {
+    if (coin.collected) continue;
+    const x = coin.x + ox; const y = coin.y + oy + Math.sin(t * 0.004 + coin.phase) * 3;
+    ctx.fillStyle = '#f1c40f'; ctx.beginPath(); ctx.arc(x, y, coin.r, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#d35400'; ctx.lineWidth = 1; ctx.stroke();
+  }
+}
+
+function drawPedestrians(ox, oy) {
+  for (const p of pedestrians) {
+    const px = p.x + ox; const py = p.y + oy;
+    ctx.save(); ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.beginPath(); ctx.arc(px + 2, py + 2, p.r, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#3498db'; ctx.beginPath(); ctx.arc(px, py, p.r, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#ffcc00'; ctx.beginPath(); ctx.arc(px, py, p.r * 0.55, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+  }
+}
+
+function drawCar() {
+  const hw = canvas.width / 2; const hh = canvas.height / 2;
+  ctx.save(); ctx.translate(hw, hh); ctx.rotate(car.angle);
+  ctx.fillStyle = '#e74c3c'; ctx.fillRect(-car.w / 2, -car.h / 2, car.w, car.h);
+  ctx.fillStyle = '#34495e'; ctx.fillRect(-car.w / 2 + 3, -car.h / 2 + 6, car.w - 6, 8); ctx.fillRect(-car.w / 2 + 3, car.h / 2 - 12, car.w - 6, 6);
+  ctx.fillStyle = '#f1c40f'; ctx.fillRect(-car.w / 2 + 2, -car.h / 2, 4, 2); ctx.fillRect(car.w / 2 - 6, -car.h / 2, 4, 2); ctx.restore();
+}
+
+function drawMinimap() {
+  const scale = minimap.width / MAP_SIZE;
+  mctx.clearRect(0, 0, minimap.width, minimap.height); 
+  mctx.fillStyle = '#0a0a0a'; mctx.fillRect(0, 0, minimap.width, minimap.height);
+  mctx.fillStyle = '#1c1c1c'; mctx.fillRect((INNER_MAP_X1 - OFF_X) * scale, (INNER_MAP_Y1 - OFF_Y) * scale, (INNER_MAP_X2 - INNER_MAP_X1) * scale, (INNER_MAP_Y2 - INNER_MAP_Y1) * scale);
+
+  mctx.fillStyle = '#3a3a3a';
+  for (const s of streets) {
+    if (s.isHoriz) mctx.fillRect((INNER_MAP_X1 - OFF_X) * scale, (s.y - OFF_Y) * scale - (s.width * scale)/2, (INNER_MAP_X2 - INNER_MAP_X1) * scale, Math.max(1.5, s.width * scale));
+    else mctx.fillRect((s.x - OFF_X) * scale - (s.width * scale)/2, (INNER_MAP_Y1 - OFF_Y) * scale, Math.max(1.5, s.width * scale), (INNER_MAP_Y2 - INNER_MAP_Y1) * scale);
+  }
+  
+  // Monedes gegants brillants
+  for (const c of coins) { 
+    if (!c.collected) {
+      mctx.fillStyle = '#FFD700'; mctx.beginPath(); mctx.arc((c.x - OFF_X) * scale, (c.y - OFF_Y) * scale, 3.5, 0, Math.PI * 2); mctx.fill();
+      mctx.strokeStyle = '#fff'; mctx.lineWidth = 0.5; mctx.stroke();
+    } 
+  }
+  if (partyZone) { mctx.fillStyle = '#2ecc71'; mctx.beginPath(); mctx.arc((partyZone.x - OFF_X)*scale, (partyZone.y - OFF_Y)*scale, 6, 0, Math.PI * 2); mctx.fill(); }
+  mctx.fillStyle = '#00d2ff'; for (const p of pedestrians) { mctx.beginPath(); mctx.arc((p.x - OFF_X) * scale, (p.y - OFF_Y) * scale, 2, 0, Math.PI * 2); mctx.fill(); }
+  
+  // El teu cotxe
+  mctx.fillStyle = '#ff3333'; mctx.beginPath(); mctx.arc((car.x - OFF_X) * scale, (car.y - OFF_Y) * scale, 4.5, 0, Math.PI * 2); mctx.fill();
+  mctx.strokeStyle = '#ffffff'; mctx.lineWidth = 1; mctx.stroke();
+}
+
+let lastTime = 0;
+
+function update(t) {
+  if (gameOver || gameWon) return;
+  const dt = Math.min(t - lastTime, 40); lastTime = t;
+
+  energy -= 0.0035 * dt;
+  if (energy <= 0) {
+    lives--; livesEl.textContent = lives; energy = 100;
+    if (lives <= 0) { gameOver = true; document.getElementById('shop-ui').style.display = 'none'; stopMusic(); }
+  }
+  energyBar.style.width = Math.max(0, energy) + '%';
+  buyButton.disabled = (score < 2 || energy >= 100); buyLifeButton.disabled = (score < 3);
+
+  let moveUp = keys.w; const moveDown = keys.s; const turnLeft = keys.a; const turnRight = keys.d; const handbrake = keys.space;
+  if (turnLeft || turnRight) { if (!moveDown && !handbrake) { moveUp = true; } }
+
+  const fr = handbrake ? car.brakeFriction : car.friction;
+  if (moveUp) car.speed = Math.min(car.speed + car.acc, car.maxSpeed);
+  else if (moveDown) car.speed = Math.max(car.speed - car.acc * 1.5, -car.maxSpeed * 0.5);
+  else car.speed *= fr;
+  if (handbrake) car.speed *= fr;
+
+  if (Math.abs(car.speed) > 0.05) {
+    const turn = car.turnSpeed * Math.sign(car.speed);
+    if (turnLeft) car.angle -= turn;
+    if (turnRight) car.angle += turn;
+  }
+
+  car.x += Math.sin(car.angle) * car.speed; car.y -= Math.cos(car.angle) * car.speed;
+
+  let bounced = false;
+  if (car.x - car.radius < INNER_MAP_X1) { car.x = INNER_MAP_X1 + car.radius; bounced = true; }
+  if (car.x + car.radius > INNER_MAP_X2) { car.x = INNER_MAP_X2 - car.radius; bounced = true; }
+  if (car.y - car.radius < INNER_MAP_Y1) { car.y = INNER_MAP_Y1 + car.radius; bounced = true; }
+  if (car.y + car.radius > INNER_MAP_Y2) { car.y = INNER_MAP_Y2 - car.radius; bounced = true; }
+  if (bounced) car.speed *= -0.4;
+
+  for (const p of pedestrians) {
+    p.x += p.speedX; p.y += p.speedY;
+    if (p.isHoriz) { if (p.x < INNER_MAP_X1 || p.x > INNER_MAP_X2) p.speedX *= -1; }
+    else { if (p.y < INNER_MAP_Y1 || p.y > INNER_MAP_Y2) p.speedY *= -1; }
+
+    if (Math.hypot(car.x - p.x, car.y - p.y) < car.radius + p.r) {
+      lives--; livesEl.textContent = lives; car.speed *= -0.6;
+      car.x += Math.sin(car.angle) * car.speed * 1.5; car.y -= Math.cos(car.angle) * car.speed * 1.5;
+      if (p.isHoriz) p.speedX *= -1; else p.speedY *= -1;
+      p.x += p.speedX * 15; p.y += p.speedY * 15;
+      if (lives <= 0) { gameOver = true; document.getElementById('shop-ui').style.display = 'none'; stopMusic(); }
+    }
+  }
+
+  for (const b of solidBlocks) {
+    if (circleHitsBlock(car.x, car.y, car.radius, b)) {
+      const res = resolveCircleBlock(car.x, car.y, car.radius, b);
+      car.x += res.nx * res.depth; car.y += res.ny * res.depth; car.speed *= -0.35; 
+    }
+  }
+
+  if (partyZone && Math.hypot(car.x - partyZone.x, car.y - partyZone.y) < car.radius + partyZone.r) {
+    if (score >= 3) { gameWon = true; document.getElementById('shop-ui').style.display = 'none'; stopMusic(); }
+    else partyMessageTimer = 90;
+  }
+  if (partyMessageTimer > 0) partyMessageTimer--;
+
+  car.trail.push({ x: car.x, y: car.y, a: car.angle }); if (car.trail.length > 12) car.trail.shift();
+
+  for (const coin of coins) {
+    if (coin.collected) continue;
+    if ((car.x - coin.x)**2 + (car.y - coin.y)**2 < (coin.r + car.radius + 6)**2) {
+      coin.collected = true; score++; scoreEl.textContent = score + " / 3 per la Festa";
+      popTimer = 50; coinpop.style.opacity = '1'; checkObjectiveStatus();
+    }
+  }
+  if (popTimer > 0) { popTimer--; if (popTimer < 15) coinpop.style.opacity = (popTimer / 15).toFixed(2); }
+  spdEl.textContent = Math.abs(Math.round(car.speed * 28));
+}
+
+function draw(t) {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  const ox = canvas.width / 2 - car.x; const oy = canvas.height / 2 - car.y;
+  drawRoads(ox, oy);
+
+  for (let i = 0; i < car.trail.length; i++) {
+    const tr = car.trail[i]; ctx.save();
+    ctx.translate(canvas.width / 2 + tr.x - car.x, canvas.height / 2 + tr.y - car.y); ctx.rotate(tr.a);
+    ctx.fillStyle = `rgba(0,0,0,${(i / car.trail.length) * 0.15})`; ctx.fillRect(-car.w / 2, -car.h / 2, car.w, car.h); ctx.restore();
+  }
+
+  drawPartyZone(ox, oy, t); drawBuildings(ox, oy); drawCoins(ox, oy, t); drawPedestrians(ox, oy); drawCar(); drawMinimap();
+
+  if (partyMessageTimer > 0 && !gameWon) {
+    ctx.save(); ctx.fillStyle = 'rgba(0,0,0,0.85)'; ctx.fillRect(canvas.width / 2 - 140, 75, 280, 45); ctx.strokeStyle = '#2ecc71'; ctx.strokeRect(canvas.width / 2 - 140, 75, 280, 45);
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 12px system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.fillText(`¡Falten monedes! En tens ${score} de 3`, canvas.width / 2, 102); ctx.restore();
+  }
+
+  if (gameOver) {
+    ctx.fillStyle = 'rgba(15, 15, 25, 0.9)'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#ff4444'; ctx.font = 'bold 36px system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('GAME OVER', canvas.width / 2, canvas.height / 2 - 20);
+    ctx.fillStyle = '#fff'; ctx.font = '14px system-ui, sans-serif'; ctx.fillText('Has quedat sense energia o has tocat un vianant.', canvas.width / 2, canvas.height / 2 + 25);
+    ctx.fillStyle = '#FFD700'; ctx.font = 'bold 18px system-ui, sans-serif'; ctx.fillText(`Monedes aconseguides: ${score}`, canvas.width / 2, canvas.height / 2 + 60);
+  }
+
+  if (gameWon) {
+    ctx.fillStyle = 'rgba(20, 10, 35, 0.95)'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#00ffcc'; ctx.font = 'bold 36px system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('¡HAS GUANYAT! 🥳🎉', canvas.width / 2, canvas.height / 2 - 30);
+    ctx.fillStyle = '#fff'; ctx.font = '14px system-ui, sans-serif'; ctx.fillText('¡Has arribat amb èxit a la Festa Major de la Ciutat!', canvas.width / 2, canvas.height / 2 + 20);
+    ctx.fillStyle = '#FFD700'; ctx.font = 'bold 18px system-ui, sans-serif'; ctx.fillText(`Total monedes: ${score} 🪙`, canvas.width / 2, canvas.height / 2 + 60);
+  }
+}
+
+function loop(t) { update(t); draw(t); requestAnimationFrame(loop); }
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
